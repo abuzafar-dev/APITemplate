@@ -1,7 +1,7 @@
 # API Template
 
 A minimal Django REST Framework starter with OpenAPI documentation and a
-health-check endpoint, meant to be copied as the base of a new JSON API.
+health-check endpoint and a `Task` CRUD example, meant to be copied as the base of a new JSON API.
 
 ## Stack
 
@@ -41,15 +41,23 @@ without any extra tooling.
 | Path | Description |
 |---|---|
 | `/api/health/` | Health check, returns `{"status": "ok"}` |
+| `/api/tasks/` | Task list / create (`?is_done=true\|false` filter) |
+| `/api/tasks/<id>/` | Task retrieve / update / delete |
 | `/api/schema/` | OpenAPI 3 schema (YAML) |
 | `/api/docs/` | Swagger UI |
 | `/admin/` | Django admin |
+
+## Tests
+
+```bash
+bash scripts/ci.sh      # check + migrations + 8 API tests
+```
 
 ## Layout
 
 ```
 apitemplate/     # project settings, urls, wsgi/asgi
-apps/            # the API app: health-check view, urls, tests
+apps/            # the API app: health-check + Task CRUD, serializers, tests
 manage.py
 ```
 
