@@ -3,6 +3,13 @@
 A minimal Django REST Framework starter with OpenAPI documentation and a
 health-check endpoint and a `Task` CRUD example, meant to be copied as the base of a new JSON API.
 
+## Quick start
+
+```bash
+make run     # creates .venv and .env, installs deps, starts the app
+make test    # checks + tests
+```
+
 ## Stack
 
 - Django 6.1
