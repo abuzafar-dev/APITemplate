@@ -3,6 +3,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.models import User
+
 
 class HealthCheckViewTests(APITestCase):
     def test_health_check_returns_ok(self):
@@ -31,34 +33,76 @@ class SchemaEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class TaskApiTests(APITestCase):
-    def test_create_and_list(self):
-        response = self.client.post('/api/tasks/', {'title': 'Birinchi'}, format='json')
+class UserApiTests(APITestCase):
+    password = 'Kuchli-parol-123'
+
+    def make_user(self, username, **extra):
+        return User.objects.create_user(username, f'{username}@example.com', self.password, **extra)
+
+    def test_register(self):
+        response = self.client.post('/api/users/', {
+            'username': 'ali', 'email': 'ali@example.com', 'password': self.password,
+        }, format='json')
+
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertFalse(response.data['is_done'])
+        self.assertNotIn('password', response.data)
+        self.assertTrue(User.objects.get(username='ali').check_password(self.password))
 
-        response = self.client.get('/api/tasks/')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+    def test_weak_password_and_duplicate_email_rejected(self):
+        self.make_user('ali')
+        response = self.client.post('/api/users/', {
+            'username': 'vali', 'email': 'ali@example.com', 'password': '123',
+        }, format='json')
 
-    def test_blank_title_rejected(self):
-        response = self.client.post('/api/tasks/', {'title': '   '}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('title', response.data)
+        self.assertIn('password', response.data)
+        self.assertIn('email', response.data)
 
-    def test_update_and_delete(self):
-        task_id = self.client.post('/api/tasks/', {'title': 'A'}, format='json').data['id']
+    def test_anonymous_cannot_list(self):
+        response = self.client.get('/api/users/')
+        self.assertIn(response.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
 
-        response = self.client.patch(f'/api/tasks/{task_id}/', {'is_done': True}, format='json')
-        self.assertTrue(response.data['is_done'])
+    def test_user_sees_and_edits_only_self(self):
+        ali, vali = self.make_user('ali'), self.make_user('vali')
+        self.client.force_authenticate(ali)
 
-        response = self.client.delete(f'/api/tasks/{task_id}/')
+        response = self.client.get('/api/users/')
+        self.assertEqual([u['username'] for u in response.data], ['ali'])
+        self.assertEqual(self.client.get(f'/api/users/{vali.id}/').status_code, 404)
+
+        response = self.client.patch(f'/api/users/{ali.id}/', {
+            'first_name': 'Ali', 'password': 'Yangi-parol-456', 'is_staff': True,
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ali.refresh_from_db()
+        self.assertEqual(ali.first_name, 'Ali')
+        self.assertTrue(ali.check_password('Yangi-parol-456'))
+        self.assertFalse(ali.is_staff)
+
+    def test_admin_lists_and_deletes(self):
+        admin = self.make_user('admin', is_staff=True)
+        ali = self.make_user('ali')
+        self.client.force_authenticate(admin)
+
+        self.assertEqual(len(self.client.get('/api/users/').data), 2)
+        response = self.client.delete(f'/api/users/{ali.id}/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(self.client.get(f'/api/tasks/{task_id}/').status_code, 404)
+        self.assertFalse(User.objects.filter(pk=ali.id).exists())
 
-    def test_filter_by_is_done(self):
-        self.client.post('/api/tasks/', {'title': 'A', 'is_done': True}, format='json')
-        self.client.post('/api/tasks/', {'title': 'B'}, format='json')
 
-        response = self.client.get('/api/tasks/?is_done=true')
-        self.assertEqual([t['title'] for t in response.data], ['A'])
+class CalculatorTests(APITestCase):
+    def test_path(self):
+        response = self.client.get(reverse('calculator-path', args=[5, 7]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'result': 12})
+
+    def test_query(self):
+        response = self.client.get(reverse('calculator-query'), {'n1': -3, 'n2': 7})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'result': 4})
+
+    def test_query_invalid_returns_400(self):
+        response = self.client.get(reverse('calculator-query'), {'n1': 'abc'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('n1', response.data)
+        self.assertIn('n2', response.data)

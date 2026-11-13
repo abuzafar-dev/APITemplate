@@ -1,10 +1,10 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from apps.models import Task
+from apps.models import User
 
 
-@admin.register(Task)
-class TaskAdmin(admin.ModelAdmin):
-    list_display = ['title', 'is_done', 'created_at']
-    list_filter = ['is_done']
-    search_fields = ['title']
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    pass
+

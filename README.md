@@ -1,7 +1,7 @@
-# API Template
+ # API Template
 
 A minimal Django REST Framework starter with OpenAPI documentation and a
-health-check endpoint and a `Task` CRUD example, meant to be copied as the base of a new JSON API.
+health-check endpoint and a custom `User` model with CRUD, meant to be copied as the base of a new JSON API.
 
 ## Quick start
 
@@ -27,7 +27,7 @@ python -m venv .venv
 cp .env.example .env          # then set SECRET_KEY
 
 .venv/bin/python manage.py migrate
-.venv/bin/python manage.py test       # 4 tests
+.venv/bin/python manage.py test       # 9 tests
 .venv/bin/python manage.py runserver
 ```
 
@@ -48,8 +48,10 @@ without any extra tooling.
 | Path | Description |
 |---|---|
 | `/api/health/` | Health check, returns `{"status": "ok"}` |
-| `/api/tasks/` | Task list / create (`?is_done=true\|false` filter) |
-| `/api/tasks/<id>/` | Task retrieve / update / delete |
+| `/api/users/` | User list / register (`POST` is open; others need login — admins see everyone, users only themselves) |
+| `/api/users/<id>/` | User retrieve / update / delete |
+| `/api/calculator/path/<n1>/<n2>/` | `@api_view` namunasi — path parametr |
+| `/api/calculator/query/?n1=&n2=` | `@api_view` namunasi — query parametr, serializer bilan tekshiruv |
 | `/api/schema/` | OpenAPI 3 schema (YAML) |
 | `/api/docs/` | Swagger UI |
 | `/admin/` | Django admin |
@@ -57,14 +59,14 @@ without any extra tooling.
 ## Tests
 
 ```bash
-bash scripts/ci.sh      # check + migrations + 8 API tests
+bash scripts/ci.sh      # check + migrations + 9 API tests
 ```
 
 ## Layout
 
 ```
 apitemplate/     # project settings, urls, wsgi/asgi
-apps/            # the API app: health-check + Task CRUD, serializers, tests
+apps/            # the API app: health-check, User (AUTH_USER_MODEL) CRUD, serializers, tests
 manage.py
 ```
 
